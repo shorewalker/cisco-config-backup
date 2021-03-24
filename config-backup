@@ -1,0 +1,91 @@
+#!/usr/bin/expect -f
+
+log_user 0
+set exitcode 0
+
+proc usage {argv0} {
+        set command [regsub .*/ $argv0 ""]
+        puts "$command --tftpserver <server> --tftppath <path> --tsv <host,access,enable tsv file>"
+}
+
+if { $argc == 0 } {
+        usage $argv0
+        exit 1
+}
+
+set argPrefix "--"
+set mandArgs { "tftpserver" "tftppath" "tsv" }
+set optArgVerbose "verbose"
+
+foreach mandArg $mandArgs {
+        if { ([lsearch -exact $argv $argPrefix$mandArg] >= 0) && ([lsearch -exact $argv $argPrefix$mandArg]+1 < $argc) } {
+                set $mandArg [lindex $argv [lsearch -exact $argv "--$mandArg"]+1]
+        } else {
+                usage $argv0
+                exit 1
+        }
+}
+
+
+if { ([lsearch -exact $argv $argPrefix$optArgVerbose] >= 0) } {
+        log_user 1
+        puts $argPrefix$optArgVerbose
+}
+
+set hosts {}
+foreach line [split [read [open $tsv]] \n] {
+        lappend hosts $line
+}
+
+foreach host $hosts {
+        lassign $host hostname passAccess passEnable
+        if { ([string length $hostname] eq 0) || ([string match "#*" $hostname]) } {
+                continue
+        }
+        spawn telnet $hostname
+        expect {
+                "Password: " {
+                        send "$passAccess\r"
+                        expect ">"
+                        send "enable\r"
+                        expect "Password: "
+                        send "$passEnable\r"
+                        expect "#"
+                        send "copy system:running-config tftp:\r"
+                        expect "?"
+                        send "$tftpserver\r"
+                        expect "?"
+                        set timestamp [clock format [clock seconds] -format {%Y-%m-%d.%H-%M-%S}]
+                        send "$tftppath/$hostname-$timestamp.cfg\r"
+                        expect "#"
+                }
+                "Enter password: " {
+                        send "$passAccess\r"
+                        expect ">"
+                        send "enable\r"
+                        expect "Enter password: "
+                        send "$passEnable\r"
+                        expect "(enable)"
+                        send "write network\r"
+                        expect "?"
+                        send "$tftpserver\r"
+                        expect "?"
+                        set timestamp [clock format [clock seconds] -format {%Y-%m-%d.%H-%M-%S}]
+                        send "$tftppath/$hostname-$timestamp.cfg\r"
+                        expect "?"
+                        send "y\r"
+                        expect "(enable)"
+                }
+                timeout {
+                        puts stderr "$hostname: timeout"
+                        set exitcode 2
+                }
+                "No route to host" {
+                        puts stderr "$hostname: No route to host"
+                        set exitcode 2
+                }
+        }
+        close
+}
+
+exit $exitcode
