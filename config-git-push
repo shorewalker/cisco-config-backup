@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -u
+
+usage() {
+    echo "${0/*\/} --tftproot <tftproot> --tftppath <tftppath> --tsv <host[,access,enable]> --commit-message \"<message>\""
+}
+
+if [ $# -eq 0 ]; then
+    usage 1>&2 ;
+    exit 1;
+fi
+
+while (( $# )) ; do
+    case $1 in
+        --tftproot )
+                tftproot=$2;
+                shift;shift;;
+        --tftppath )
+                tftppath=$2;
+                shift;shift;;
+        --tsv )
+                tsv=$2;
+                shift;shift;;
+        --commit-message )
+                commitmessage=$2l
+                shift;shift;;
+       * )
+                echo "Unrecognized option $1" 1>&2 ;
+                usage 1>&2 ;
+                exit 2 ;;
+    esac
+done
+
+if [ -z "$tftproot" ]; then echo "missing tftproot"; exit 3; fi
+if [ -z "$tftppath" ]; then echo "missing tftppath"; exit 3; fi
+if [ -z "$tsv" ]; then echo "missing tsv"; exit 3; fi
+if [ -z "$commitmessage" ]; then echo "missing commitmessage"; exit 3; fi
+
+while read -r device access enable; do
+        latest=$(ls -1tr $tftproot/$tftppath/$device* | tail -n1);
+        ln -f $latest $tftproot/${tftppath/${tftppath/*\/}}/current/${tftppath/${tftppath/\/*}}/$device.cfg;
+done < $tsv
+
+cd $tftproot/${tftppath/${tftppath/*\/}}/current/ && git commit -a -m $commitmessage && git push
