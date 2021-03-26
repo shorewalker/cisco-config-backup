@@ -5,6 +5,6 @@ a simple expect script for backing up iOS and CatOS running configurations via t
 
 ##
 
-aditionally a small bash script (with some dubious filesystem assumptions) to commit configurations into a git repo in a useful way
+additionally a small bash script (with some dubious filesystem assumptions) to commit configurations into a git repo in a useful way
 
 `config-git-push --tftproot <tftproot> --tftppath <tftppath> --tsv <host[,access,enable]> --commit-message "<message>"`
