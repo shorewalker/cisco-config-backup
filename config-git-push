@@ -23,7 +23,7 @@ while (( $# )) ; do
                 tsv=$2;
                 shift;shift;;
         --commit-message )
-                commitmessage=$2l
+                commitmessage=$2
                 shift;shift;;
        * )
                 echo "Unrecognized option $1" 1>&2 ;
@@ -38,6 +38,10 @@ if [ -z "$tsv" ]; then echo "missing tsv"; exit 3; fi
 if [ -z "$commitmessage" ]; then echo "missing commitmessage"; exit 3; fi
 
 while read -r device access enable; do
+        if [[ $device =~ '#' ]] ; then
+                continue
+                echo $device
+        fi
         latest=$(ls -1tr $tftproot/$tftppath/$device* | tail -n1);
         ln -f $latest $tftproot/${tftppath/${tftppath/*\/}}/current/${tftppath/${tftppath/\/*}}/$device.cfg;
 done < $tsv
