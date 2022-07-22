@@ -1,11 +1,13 @@
 #!/usr/bin/expect -f
 
+## verbose log_user 1
+## quiet log_user 0
 log_user 0
 set exitcode 0
 
 proc usage {argv0} {
         set command [regsub .*/ $argv0 ""]
-        puts "$command --tftpserver <server> --tftppath <path> --tsv <host,access,enable tsv file>"
+        puts "$command --tftpserver <server> --tftppath <path> --tsv <host,access,enable\[,method,username\] tsv file> \[--verbose\]"
 }
 
 if { $argc == 0 } {
@@ -38,13 +40,17 @@ foreach line [split [read [open $tsv]] \n] {
 }
 
 foreach host $hosts {
-        lassign $host hostname passAccess passEnable
+        lassign $host hostname passAccess passEnable method username
         if { ([string length $hostname] eq 0) || ([string match "#*" $hostname]) } {
                 continue
         }
-        spawn telnet $hostname
+        if { ([string length $method] eq 0) || ([string match "telnet" $method]) } {
+                spawn telnet $hostname
+        }
+        if { [string match "ssh" $method] } {
+                spawn ssh $username@$hostname
+        }
         expect {
-                # iOS
                 "Password: " {
                         send "$passAccess\r"
                         expect ">"
@@ -60,7 +66,6 @@ foreach host $hosts {
                         send "$tftppath/$hostname-$timestamp.cfg\r"
                         expect "#"
                 }
-                # CatOS
                 "Enter password: " {
                         send "$passAccess\r"
                         expect ">"
