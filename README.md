@@ -1,7 +1,7 @@
 # cisco-config-backup
 a simple expect script for backing up iOS and CatOS running configurations via tftp
 
-`config-backup --tftpserver <server> --tftppath <path> --tsv <host,access,enable tsv file>`
+`config-backup --tftpserver <server> --tftppath <path> --tsv <host,access,enable[,method,username] tsv file> [--verbose]`
 
 ##
 
