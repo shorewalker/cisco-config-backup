@@ -3,7 +3,7 @@
 set -u
 
 usage() {
-    echo "${0/*\/} --tftproot <tftproot> --tftppath <tftppath> --tsv <host[,access,enable]> --commit-message \"<message>\""
+    echo "${0/*\/} --tftpserver <tftpserver> --tftproot <tftproot> --tftppath <tftppath> --tsv <host[,access,enable]> --commit-message \"<message>\""
 }
 
 if [ $# -eq 0 ]; then
@@ -13,6 +13,9 @@ fi
 
 while (( $# )) ; do
     case $1 in
+        --tftpserver )
+                tftpserver=$2;
+                shift;shift;;
         --tftproot )
                 tftproot=$2;
                 shift;shift;;
@@ -32,6 +35,7 @@ while (( $# )) ; do
     esac
 done
 
+if [ -z "$tftpserver" ]; then echo "missing tftpserver"; exit 3; fi
 if [ -z "$tftproot" ]; then echo "missing tftproot"; exit 3; fi
 if [ -z "$tftppath" ]; then echo "missing tftppath"; exit 3; fi
 if [ -z "$tsv" ]; then echo "missing tsv"; exit 3; fi
@@ -43,7 +47,13 @@ while read -r device access enable; do
                 echo $device
         fi
         latest=$(ls -1tr $tftproot/$tftppath/$device* | tail -n1);
+        while [ $(wc -c <"$latest") -eq 65536 ]; do
+                config-backup --tftpserver $tftpserver --tftproot $tftproot --tftppath $tftppath --tsv <(grep $device $tsv)
+                latest=$(ls -1tr $tftproot/$tftppath/$device* | tail -n1);
+        done
         ln -f $latest $tftproot/${tftppath/${tftppath/*\/}}/current/${tftppath/${tftppath/\/*}}/$device.cfg;
 done < $tsv
 
-cd $tftproot/${tftppath/${tftppath/*\/}}/current/ && git commit -a -m $commitmessage && git push
+cd $tftproot/${tftppath/${tftppath/*\/}}/current/
+git commit -a -m $commitmessage | grep -v -e '# On branch main' -e 'nothing to commit, working directory clean'
+[ $? -eq 0 ] && git push --quiet | grep -v 'Everything up-to-date'
